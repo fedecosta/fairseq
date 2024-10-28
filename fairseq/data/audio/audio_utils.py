@@ -15,8 +15,9 @@ import torch.nn.functional as F
 
 from fairseq.data.audio.waveform_transforms import CompositeAudioWaveformTransform
 
-SF_AUDIO_FILE_EXTENSIONS = {".wav", ".flac", ".ogg"}
-FEATURE_OR_SF_AUDIO_FILE_EXTENSIONS = {".npy", ".wav", ".flac", ".ogg"}
+# HACK [DEBUG] added .mp3
+SF_AUDIO_FILE_EXTENSIONS = {".wav", ".flac", ".ogg", ".mp3"}
+FEATURE_OR_SF_AUDIO_FILE_EXTENSIONS = {".npy", ".wav", ".flac", ".mp3"}
 
 
 def convert_waveform(

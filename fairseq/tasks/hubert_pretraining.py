@@ -158,6 +158,9 @@ class HubertPretrainingTask(FairseqTask):
         return self.cfg.label_dir
 
     def load_dataset(self, split: str, **kwargs) -> None:
+
+        #logger.info(f"[DEBUG] Entered load_dataset()")
+
         manifest = f"{self.cfg.data}/{split}.tsv"
         dicts = [self.target_dictionary] if self.cfg.fine_tuning else self.dictionaries
         pad_list = [dict.pad() for dict in dicts]
@@ -183,6 +186,8 @@ class HubertPretrainingTask(FairseqTask):
             random_crop=self.cfg.random_crop,
             single_target=self.cfg.single_target,
         )
+    
+        #logger.info(f"[DEBUG] Exited load_dataset()")
 
     def max_positions(self) -> Tuple[int, int]:
         return (sys.maxsize, sys.maxsize)

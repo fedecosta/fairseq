@@ -24,6 +24,7 @@ logger = logging.getLogger("dump_mfcc_feature")
 
 
 class MfccFeatureReader(object):
+    
     def __init__(self, sample_rate):
         self.sample_rate = sample_rate
 
@@ -55,6 +56,7 @@ class MfccFeatureReader(object):
 def main(tsv_dir, split, nshard, rank, feat_dir, sample_rate):
     reader = MfccFeatureReader(sample_rate)
     generator, num = get_path_iterator(f"{tsv_dir}/{split}.tsv", nshard, rank)
+    logger.info(f"[DEBUG] num: {num}")
     dump_feature(reader, generator, num, split, nshard, rank, feat_dir)
 
 

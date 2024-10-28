@@ -42,12 +42,18 @@ from fairseq.trainer import Trainer
 
 
 def main(cfg: FairseqConfig) -> None:
+
+    logger.info(f"[DEBUG] Entered main()")
+
+    # TODO understand what is this doing
     if isinstance(cfg, argparse.Namespace):
         cfg = convert_namespace_to_omegaconf(cfg)
 
+    # TODO understand what is this doing
     utils.import_user_module(cfg.common)
     add_defaults(cfg)
 
+    # TODO understand what is this doing
     if (
         distributed_utils.is_master(cfg.distributed_training)
         and "job_logging_cfg" in cfg
@@ -55,24 +61,33 @@ def main(cfg: FairseqConfig) -> None:
         # make hydra logging work with ddp (see # see https://github.com/facebookresearch/hydra/issues/1126)
         logging.config.dictConfig(OmegaConf.to_container(cfg.job_logging_cfg))
 
+    # TODO understand what is this doing
     assert (
         cfg.dataset.max_tokens is not None or cfg.dataset.batch_size is not None
     ), "Must specify batch size either with --max-tokens or --batch-size"
     metrics.reset()
 
     if cfg.common.log_file is not None:
+        #logger.info(f"[DEBUG] logging.FileHandler filename={cfg.common.log_file}")
         handler = logging.FileHandler(filename=cfg.common.log_file)
         logger.addHandler(handler)
 
     np.random.seed(cfg.common.seed)
     utils.set_torch_seed(cfg.common.seed)
 
+    # TODO understand what is this doing
     if distributed_utils.is_master(cfg.distributed_training):
-        checkpoint_utils.verify_checkpoint_directory(cfg.checkpoint.save_dir)
+        logger.info(f"[DEBUG] os.getcwd(): {os.getcwd()}")
+        logger.info(f"[DEBUG] cfg.checkpoint.save_dir: {cfg.checkpoint.save_dir}")
+        logger.info(f"[DEBUG] JOIN: {os.path.join(os.getcwd(), cfg.checkpoint.save_dir)}")
+        # HACK [DEBUG]
+        # original line: checkpoint_utils.verify_checkpoint_directory(cfg.checkpoint.save_dir)
+        checkpoint_utils.verify_checkpoint_directory(os.path.join(os.getcwd(), cfg.checkpoint.save_dir))
 
     # Print args
     logger.info(cfg)
 
+    # TODO understand what is this doing
     if cfg.checkpoint.write_checkpoints_asynchronously:
         try:
             import iopath  # noqa: F401
@@ -84,17 +99,21 @@ def main(cfg: FairseqConfig) -> None:
             return
 
     # Setup task, e.g., translation, language modeling, etc.
+    # TODO understand what is this doing
     task = tasks.setup_task(cfg.task)
 
     assert cfg.criterion, "Please specify criterion to train a model"
 
     # Build model and criterion
+    logger.info(f"[DEBUG] cfg.distributed_training.ddp_backend: {cfg.distributed_training.ddp_backend}")
     if cfg.distributed_training.ddp_backend == "fully_sharded":
         with fsdp_enable_wrap(cfg.distributed_training):
             model = fsdp_wrap(task.build_model(cfg.model))
     else:
         model = task.build_model(cfg.model)
+    
     criterion = task.build_criterion(cfg.criterion)
+    
     logger.info(model)
     logger.info("task: {}".format(task.__class__.__name__))
     logger.info("model: {}".format(model.__class__.__name__))
@@ -125,15 +144,20 @@ def main(cfg: FairseqConfig) -> None:
 
     # Load valid dataset (we load training data below, based on the latest checkpoint)
     # We load the valid dataset AFTER building the model
+    logger.info(f"[DEBUG] Starting loading validation part...")
     if not cfg.dataset.disable_validation:
         data_utils.raise_if_valid_subsets_unintentionally_ignored(cfg)
+        logger.info(f"[DEBUG] cfg.dataset.combine_valid_subsets: {cfg.dataset.combine_valid_subsets}")
         if cfg.dataset.combine_valid_subsets:
             task.load_dataset("valid", combine=True, epoch=1)
         else:
             for valid_sub_split in cfg.dataset.valid_subset.split(","):
+                logger.info(f"cfg.dataset.valid_subset: {cfg.dataset.valid_subset}")
                 task.load_dataset(valid_sub_split, combine=False, epoch=1)
-
+    logger.info(f"[DEBUG] Passed loading validation data part!")
+    
     # (optionally) Configure quantization
+    logger.info(f"[DEBUG] Starting quantization part...")
     if cfg.common.quantization_config_path is not None:
         quantizer = quantization_utils.Quantizer(
             config_path=cfg.common.quantization_config_path,
@@ -142,11 +166,15 @@ def main(cfg: FairseqConfig) -> None:
         )
     else:
         quantizer = None
+    logger.info(f"[DEBUG] Passed quantization part!")
 
     # Build trainer
+    logger.info(f"[DEBUG] Starting trainer building part...")
     if cfg.common.model_parallel_size == 1:
+        logger.info(f"[DEBUG] Building trainer with Trainer()")
         trainer = Trainer(cfg, task, model, criterion, quantizer)
     else:
+        logger.info(f"[DEBUG] Building trainer with MegatronTrainer()")
         trainer = MegatronTrainer(cfg, task, model, criterion)
     logger.info(
         "training on {} devices (GPUs/TPUs)".format(
@@ -159,6 +187,7 @@ def main(cfg: FairseqConfig) -> None:
             cfg.dataset.batch_size,
         )
     )
+    logger.info(f"[DEBUG] Passed trainer building part!")
 
     # Load the latest checkpoint if one is available and restore the
     # corresponding train iterator
@@ -190,6 +219,8 @@ def main(cfg: FairseqConfig) -> None:
                 pass
     # TODO: end of dry run section
 
+    
+    logger.info(f"[DEBUG] Starting training...")
     train_meter = meters.StopwatchMeter()
     train_meter.start()
     while epoch_itr.next_epoch_idx <= max_epoch:
@@ -203,6 +234,7 @@ def main(cfg: FairseqConfig) -> None:
 
         # train for one epoch
         valid_losses, should_stop = train(cfg, trainer, task, epoch_itr)
+        logger.info(f"[DEBUG ]valid_losses: {valid_losses}")
         if should_stop:
             break
 
@@ -218,6 +250,7 @@ def main(cfg: FairseqConfig) -> None:
         )
     train_meter.stop()
     logger.info("done training in {:.1f} seconds".format(train_meter.sum))
+    logger.info(f"[DEBUG] Passed training!")
 
     # ioPath implementation to wait for all asynchronous file writes to complete.
     if cfg.checkpoint.write_checkpoints_asynchronously:
@@ -227,9 +260,14 @@ def main(cfg: FairseqConfig) -> None:
         )
         PathManager.async_close()
         logger.info("ioPath PathManager finished waiting.")
+    
+    logger.info(f"[DEBUG] Exited main()")
 
 
 def should_stop_early(cfg: DictConfig, valid_loss: float) -> bool:
+
+    #logger.info(f"[DEBUG] Entered should_stop_early()")
+
     # skip check if no validation was done in the current epoch
     if valid_loss is None:
         return False
@@ -252,8 +290,10 @@ def should_stop_early(cfg: DictConfig, valid_loss: float) -> bool:
                     cfg.checkpoint.patience
                 )
             )
+            #logger.info(f"[DEBUG] Exited should_stop_early()")
             return True
         else:
+            #logger.info(f"[DEBUG] Exited should_stop_early()")
             return False
 
 
@@ -261,6 +301,9 @@ def should_stop_early(cfg: DictConfig, valid_loss: float) -> bool:
 def train(
     cfg: DictConfig, trainer: Trainer, task: tasks.FairseqTask, epoch_itr
 ) -> Tuple[List[Optional[float]], bool]:
+
+    logger.info(f"[DEBUG] Entered train()")
+
     """Train the model for one epoch and return validation losses."""
     # Initialize data iterator
     itr = epoch_itr.next_epoch_itr(
@@ -356,10 +399,16 @@ def train(
 
     # reset epoch-level meters
     metrics.reset_meters("train")
+
+    logger.info(f"[DEBUG] Exited train()")
+
     return valid_losses, should_stop
 
 
 def _flatten_config(cfg: DictConfig):
+
+    logger.info(f"[DEBUG] Entered _flatten_config()")
+
     config = OmegaConf.to_container(cfg)
     # remove any legacy Namespaces and replace with a single "args"
     namespace = None
@@ -369,6 +418,9 @@ def _flatten_config(cfg: DictConfig):
             del config[k]
     if namespace is not None:
         config["args"] = vars(namespace)
+
+    logger.info(f"[DEBUG] Exited _flatten_config()")
+    
     return config
 
 
@@ -380,6 +432,9 @@ def validate_and_save(
     valid_subsets: List[str],
     end_of_epoch: bool,
 ) -> Tuple[List[Optional[float]], bool]:
+    
+    #logger.info(f"[DEBUG] Entered validate_and_save()")
+
     num_updates = trainer.get_num_updates()
     max_update = cfg.optimization.max_update or math.inf
 
@@ -415,6 +470,8 @@ def validate_and_save(
             and num_updates >= cfg.dataset.validate_after_updates
         )
     )
+    #logger.info(f"[DEBUG] do_save: {do_save}")
+
     do_validate = (
         (
             (not end_of_epoch and do_save)  # validate during mid-epoch saves
@@ -429,6 +486,24 @@ def validate_and_save(
         and not cfg.dataset.disable_validation
         and num_updates >= cfg.dataset.validate_after_updates
     )
+    
+    #a = (not end_of_epoch and do_save)
+    #b = (end_of_epoch and epoch_itr.epoch % cfg.dataset.validate_interval == 0)
+    #c = should_stop
+    #d = (
+    #            cfg.dataset.validate_interval_updates > 0
+    #            and num_updates > 0
+    #            and num_updates % cfg.dataset.validate_interval_updates == 0
+    #        )
+    
+    #logger.info(f"[DEBUG] do_validate a: {a}")
+    #logger.info(f"[DEBUG] do_validate b: {b}")
+    #logger.info(f"[DEBUG] do_validate c: {c}")
+    #logger.info(f"[DEBUG] do_validate d: {d}")
+    #logger.info(f"[DEBUG] do_validate cond1: {a or b or c or d}")
+    #logger.info(f"[DEBUG] do_validate cond2: {not cfg.dataset.disable_validation}")
+    #logger.info(f"[DEBUG] do_validate cond3: {num_updates >= cfg.dataset.validate_after_updates}")
+    #logger.info(f"[DEBUG] do_validate: {do_validate}")
 
     # Validate
     valid_losses = [None]
@@ -445,11 +520,20 @@ def validate_and_save(
         if cp_path is not None and hasattr(task, "post_save"):
             task.post_save(cp_path, num_updates)
 
+    
+    #logger.info(f"[DEBUG] Exited validate_and_save()")
+
     return valid_losses, should_stop
 
 
 def get_training_stats(stats: Dict[str, Any]) -> Dict[str, Any]:
+    
+    #logger.info(f"[DEBUG] Entered get_training_stats()")
+
     stats["wall"] = round(metrics.get_meter("default", "wall").elapsed_time, 0)
+    
+    #logger.info(f"[DEBUG] Exited get_training_stats()")
+    
     return stats
 
 
@@ -462,6 +546,8 @@ def validate(
 ) -> List[Optional[float]]:
     """Evaluate the model on the validation set(s) and return the losses."""
 
+    logger.info(f"[DEBUG] Entered validate()")
+    
     if cfg.dataset.fixed_validation_seed is not None:
         # set fixed seed for every validation
         utils.set_torch_seed(cfg.dataset.fixed_validation_seed)
@@ -532,6 +618,9 @@ def validate(
         progress.print(stats, tag=subset, step=trainer.get_num_updates())
 
         valid_losses.append(stats[cfg.checkpoint.best_checkpoint_metric])
+    
+    logger.info(f"[DEBUG] Exited validate()")
+
     return valid_losses
 
 
@@ -541,6 +630,9 @@ def get_valid_stats(
     stats: Dict[str, Any],
     tracking_best: bool,
 ) -> Dict[str, Any]:
+
+    logger.info(f"[DEBUG] Entered get_valid_stats()")
+
     stats["num_updates"] = trainer.get_num_updates()
     if tracking_best and hasattr(checkpoint_utils.save_checkpoint, "best"):
         key = "best_{0}".format(cfg.checkpoint.best_checkpoint_metric)
@@ -549,12 +641,18 @@ def get_valid_stats(
             checkpoint_utils.save_checkpoint.best,
             stats[cfg.checkpoint.best_checkpoint_metric],
         )
+    
+    logger.info(f"[DEBUG] Exited get_valid_stats()")
+
     return stats
 
 
 def cli_main(
     modify_parser: Optional[Callable[[argparse.ArgumentParser], None]] = None
 ) -> None:
+
+    logger.info(f"[DEBUG] Entered cli_main()")
+
     parser = options.get_training_parser()
     args = options.parse_args_and_arch(parser, modify_parser=modify_parser)
 
@@ -576,6 +674,9 @@ def cli_main(
     # if cfg.common.use_plasma_view:
     #     server.server.kill()
 
+    logger.info(f"[DEBUG] Exited cli_main()")
+
 
 if __name__ == "__main__":
+    #logger.info(f"[DEBUG] Entered if __name__ == __main__")
     cli_main()

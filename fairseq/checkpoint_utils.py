@@ -876,13 +876,15 @@ def verify_checkpoint_directory(save_dir: str) -> None:
     try:
         with open(temp_file_path, "w"):
             pass
+        logger.info("[DEBUG] entered dummy")
     except OSError as e:
         logger.warning(
             "Unable to access checkpoint save directory: {}".format(save_dir)
         )
         raise e
-    else:
-        os.remove(temp_file_path)
+    # HACK [DEBUG] I removed this else, seems wrong
+    #else:
+    #    os.remove(temp_file_path)
 
 
 def save_ema_as_checkpoint(src_path, dst_path):

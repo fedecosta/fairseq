@@ -3,22 +3,30 @@
 common:
   fp16: true
   log_format: json
-  log_interval: 200
+  log_file: '/gpfs/projects/bsc88/speech/research/outputs/logs/hubert/fairseq_train_log.txt' # added by me
+  log_interval: 100 # modified by me, original 200
   seed: 1337
   tensorboard_logdir: tblog
+  #aim_repo: '/gpfs/projects/bsc88/speech/research/outputs/logs/hubert/pre_train/aim_repo' # added by me
+  #model_parallel_size: 2 # added by me
+  reset_logging: True # added by me
 
 checkpoint:
   save_interval_updates: 25000
   keep_interval_updates: 1
   no_epoch_checkpoints: true
+  save_dir: 'checkpoints' # added by me
 
+#common_eval:
+#  path: 'research/outputs/checkpoints/fairseq/hubert' # added by me
+#  results_path: 'research/outputs/checkpoints/fairseq/hubert' # added by me
 
 distributed_training:
   ddp_backend: no_c10d
   distributed_backend: 'nccl'
-  distributed_world_size: 32
+  #distributed_world_size: 32
   distributed_port: 29671
-  nprocs_per_node: 8
+  #nprocs_per_node: 8
   find_unused_parameters: true
 
 task:
@@ -27,7 +35,7 @@ task:
   label_dir: ???
   labels: ???
   label_rate: ${model.label_rate}
-  sample_rate: 16000
+  sample_rate: 32000 # modified by me
   max_sample_size: 250000
   min_sample_size: 32000
   pad_audio: false
@@ -38,7 +46,7 @@ dataset:
   num_workers: 6
   max_tokens: 1400000
   skip_invalid_size_inputs_valid_test: true
-  validate_interval: 5
+  validate_interval: 1 # modified by me
   validate_interval_updates: 10000
 
 criterion:
@@ -51,6 +59,7 @@ optimization:
   max_update: 400000
   lr: [0.0005]
   clip_norm: 10.0
+  max_epoch: 1 # added by me
 
 optimizer:
   _name: adam

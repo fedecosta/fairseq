@@ -15,6 +15,8 @@ logger = logging.getLogger(__name__)
 
 def hydra_init(cfg_name="config") -> None:
 
+    logger.info("[DEBUG] Entered hydra_init()")
+
     cs = ConfigStore.instance()
     cs.store(name=f"{cfg_name}", node=FairseqConfig)
 
@@ -25,6 +27,8 @@ def hydra_init(cfg_name="config") -> None:
         except BaseException:
             logger.error(f"{k} - {v}")
             raise
+    
+    logger.info("[DEBUG] Exited hydra_init()")
 
 
 def add_defaults(cfg: DictConfig) -> None:

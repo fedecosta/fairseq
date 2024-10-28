@@ -25,13 +25,22 @@ logger = logging.getLogger(__name__)
 
 
 def load_audio(manifest_path, max_keep, min_keep):
+
+    logger.info("[DEBUG] Entered load_audio()")
+    
     n_long, n_short = 0, 0
     names, inds, sizes = [], [], []
+
+    logger.info(f"[DEBUG] manifest_path: {manifest_path}")
+    logger.info(f"[DEBUG] min_keep: {min_keep}")
+    logger.info(f"[DEBUG] max_keep: {max_keep}")
+
     with open(manifest_path) as f:
         root = f.readline().strip()
         for ind, line in enumerate(f):
             items = line.strip().split("\t")
-            assert len(items) == 2, line
+            #DEBUG
+            #assert len(items) == 2, line
             sz = int(items[1])
             if min_keep is not None and sz < min_keep:
                 n_short += 1
@@ -49,6 +58,9 @@ def load_audio(manifest_path, max_keep, min_keep):
             f"longest-loaded={max(sizes)}, shortest-loaded={min(sizes)}"
         )
     )
+
+    logger.info("[DEBUG] Exited load_audio()")
+
     return root, names, inds, tot, sizes
 
 
@@ -132,6 +144,9 @@ class HubertDataset(FairseqDataset):
         random_crop: bool = False,
         single_target: bool = False,
     ):
+        
+        logger.info("[DEBUG] Entered HubertDataset")
+        
         self.audio_root, self.audio_names, inds, tot, self.sizes = load_audio(
             manifest_path, max_keep_sample_size, min_keep_sample_size
         )
@@ -172,6 +187,8 @@ class HubertDataset(FairseqDataset):
             f"pad_audio={pad_audio}, random_crop={random_crop}, "
             f"normalize={normalize}, max_sample_size={self.max_sample_size}"
         )
+
+        logger.info("[DEBUG] EXited HubertDataset")
 
     def get_audio(self, index):
         import soundfile as sf
@@ -295,9 +312,10 @@ class HubertDataset(FairseqDataset):
             rem_size = [len(t) - s for t, s in zip(targets, frm_starts)]
             frm_size = min(frm_size, *rem_size)
         targets = [t[s : s + frm_size] for t, s in zip(targets, frm_starts)]
-        logger.debug(f"audio_starts={audio_starts}")
-        logger.debug(f"frame_starts={frm_starts}")
-        logger.debug(f"frame_size={frm_size}")
+        # HACK [DEBUG]
+        #logger.debug(f"audio_starts={audio_starts}")
+        #logger.debug(f"frame_starts={frm_starts}")
+        #logger.debug(f"frame_size={frm_size}")
 
         lengths = torch.LongTensor([len(t) for t in targets])
         ntokens = lengths.sum().item()

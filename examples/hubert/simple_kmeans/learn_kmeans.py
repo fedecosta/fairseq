@@ -73,8 +73,16 @@ def load_feature_shard(feat_dir, split, nshard, rank, percent):
 
 def load_feature(feat_dir, split, nshard, seed, percent):
     assert percent <= 1.0
+
+    #for r in range(nshard):
+    #    logging.info(f"[DEBUG] feat_dir: {feat_dir}")
+    #    logging.info(f"[DEBUG] split: {split}")
+    #    logging.info(f"[DEBUG] nshard: {nshard}")
+    #    logging.info(f"[DEBUG] r: {r}")
+
     feat = np.concatenate(
         [
+            
             load_feature_shard(feat_dir, split, nshard, r, percent)
             for r in range(nshard)
         ],

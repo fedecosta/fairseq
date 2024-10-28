@@ -35,13 +35,28 @@ def get_shard_range(tot, nshard, rank):
 def get_path_iterator(tsv, nshard, rank):
     with open(tsv, "r") as f:
         root = f.readline().rstrip()
+        logger.info(f"[DEBUG] root: {root}")
         lines = [line.rstrip() for line in f]
         start, end = get_shard_range(len(lines), nshard, rank)
         lines = lines[start:end]
         def iterate():
-            for line in lines:
-                subpath, nsample = line.split("\t")
-                yield f"{root}/{subpath}", int(nsample)
+            for line in lines:         
+                
+                #original line
+                #subpath, nsample = line.split("\t")
+                subpath = line.split("\t")[0]
+
+                #logger.info(f"{root}/{subpath}")
+                #import torchaudio
+                #logger.info(f"torchaudio.info(file_path).sample_rate: {torchaudio.info(f'{root}/{subpath}').sample_rate}")
+                
+                #original line
+                #yield f"{root}/{subpath}", int(nsample)
+
+                # HACK there is no second col in tsv! nsample is used at MfccFeatureReader.get_feats() and seems useless
+                #nsample should be the len of the waveform
+                yield f"{root}/{subpath}", None
+
     return iterate, len(lines)
 
 
