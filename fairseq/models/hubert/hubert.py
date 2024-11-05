@@ -94,7 +94,8 @@ class HubertConfig(FairseqDataclass):
         default=0,
         metadata={
             "help": "project final representations and targets to this many "
-            "dimensions. set to encoder_embed_dim is <= 0"
+            "dimensions. set to encoder_embed_dim is <= 0" 
+            # [DEBUG] this criptic explanation means: final_dim = cfg.final_dim if cfg.final_dim > 0 else cfg.encoder_embed_dim 
         },
     )
     untie_final_proj: bool = field(
@@ -246,6 +247,7 @@ class HubertConfig(FairseqDataclass):
 
 @register_model("hubert", dataclass=HubertConfig)
 class HubertModel(BaseFairseqModel):
+    
     def __init__(
         self,
         cfg: HubertConfig,
@@ -265,6 +267,7 @@ class HubertModel(BaseFairseqModel):
             conv_bias=cfg.conv_bias,
         )
         feature_ds_rate = np.prod([s for _, _, s in feature_enc_layers])
+        logger.info(f"[DEBUG] feature_ds_rate: {feature_ds_rate}")
         self.feat2tar_ratio = cfg.label_rate * feature_ds_rate / task_cfg.sample_rate
 
         self.post_extract_proj = (
@@ -440,7 +443,9 @@ class HubertModel(BaseFairseqModel):
         output_layer: Optional[int] = None,
     ) -> Dict[str, torch.Tensor]:
         """output layer is 1-based"""
+        
         features = self.forward_features(source)
+
         if target_list is not None:
             features, target_list = self.forward_targets(features, target_list)
 

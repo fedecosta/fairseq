@@ -7,14 +7,14 @@ common:
   log_interval: 100 # modified by me, original 200
   seed: 1337
   tensorboard_logdir: tblog
-  #aim_repo: '/gpfs/projects/bsc88/speech/research/outputs/logs/hubert/pre_train/aim_repo' # added by me
-  #model_parallel_size: 2 # added by me
-  reset_logging: True # added by me
+  #model_parallel_size: 8 # total number of GPUs to parallelize model over
+  #reset_logging: True # added by me
 
 checkpoint:
-  save_interval_updates: 25000
-  keep_interval_updates: 1
-  no_epoch_checkpoints: true
+  save_interval: 1 # added by me, save a checkpoint every N epochs
+  #save_interval_updates: 25000 # save a checkpoint (and validate) every N updates
+  keep_interval_updates: 1 # keep the last N checkpoints saved with --save-interval-updates
+  no_epoch_checkpoints: true # only store last and best checkpoints
   save_dir: 'checkpoints' # added by me
 
 #common_eval:
@@ -24,9 +24,10 @@ checkpoint:
 distributed_training:
   ddp_backend: no_c10d
   distributed_backend: 'nccl'
-  #distributed_world_size: 32
+  distributed_world_size: 4 # total number of GPUs across all nodes (default: all visible GPUs)
+  #distributed_num_procs: 1 # total number of processes to fork (default: all visible GPUs) 
   distributed_port: 29671
-  #nprocs_per_node: 8
+  #nprocs_per_node: 4 # number of GPUs in each node. An allreduce operation across GPUs in a node is very fast. Hence, we do allreduce across GPUs in a node, and gossip across different nodes
   find_unused_parameters: true
 
 task:
@@ -35,7 +36,7 @@ task:
   label_dir: ???
   labels: ???
   label_rate: ${model.label_rate}
-  sample_rate: 32000 # modified by me
+  sample_rate: 16000 # modified by me
   max_sample_size: 250000
   min_sample_size: 32000
   pad_audio: false
@@ -43,11 +44,11 @@ task:
   normalize: false # must be consistent with extractor
 
 dataset:
-  num_workers: 6
-  max_tokens: 1400000
+  num_workers: 6 # how many subprocesses to use for data loading
+  max_tokens: 1400000 # maximum number of tokens in a batch
   skip_invalid_size_inputs_valid_test: true
-  validate_interval: 1 # modified by me
-  validate_interval_updates: 10000
+  validate_interval: 1 # validate every N epochs
+  #validate_interval_updates: 10000 # validate every N updates
 
 criterion:
   _name: hubert
@@ -59,7 +60,7 @@ optimization:
   max_update: 400000
   lr: [0.0005]
   clip_norm: 10.0
-  max_epoch: 1 # added by me
+  max_epoch: 1 # if 0, no epoch limit 
 
 optimizer:
   _name: adam
@@ -88,6 +89,7 @@ model:
   feature_grad_mult: 0.1
   untie_final_proj: true
   activation_dropout: 0.0
+  #encoder_attention_heads: 12 # num encoder attention heads (default 12)
 
 hydra:
   job:

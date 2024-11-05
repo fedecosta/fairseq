@@ -50,13 +50,18 @@ class MfccFeatureReader(object):
             ddeltas = torchaudio.functional.compute_deltas(deltas)
             concat = torch.cat([mfccs, deltas, ddeltas], dim=0)
             concat = concat.transpose(0, 1).contiguous()  # (freq, time)
+            
+            #logger.info(f"[DEBUG] x.size(): {x.size()}")
+            #logger.info(f"[DEBUG] concat.size(): {concat.size()}")
+            
             return concat
 
 
 def main(tsv_dir, split, nshard, rank, feat_dir, sample_rate):
     reader = MfccFeatureReader(sample_rate)
     generator, num = get_path_iterator(f"{tsv_dir}/{split}.tsv", nshard, rank)
-    logger.info(f"[DEBUG] num: {num}")
+    # seems that num is the number of files to iterate on
+    #logger.info(f"[DEBUG] num: {num}")
     dump_feature(reader, generator, num, split, nshard, rank, feat_dir)
 
 

@@ -34,8 +34,11 @@ def get_shard_range(tot, nshard, rank):
 
 def get_path_iterator(tsv, nshard, rank):
     with open(tsv, "r") as f:
+        
         root = f.readline().rstrip()
-        logger.info(f"[DEBUG] root: {root}")
+        #logger.info(f"[DEBUG] root: {root}")
+        # seems that root is the first line, which should be the audios folder dir
+
         lines = [line.rstrip() for line in f]
         start, end = get_shard_range(len(lines), nshard, rank)
         lines = lines[start:end]
@@ -43,20 +46,24 @@ def get_path_iterator(tsv, nshard, rank):
             for line in lines:         
                 
                 #original line
-                #subpath, nsample = line.split("\t")
-                subpath = line.split("\t")[0]
+                subpath, nsample = line.split("\t")
+                # HACK line
+                #subpath = line.split("\t")[0]
 
+                # [DEBUG]
                 #logger.info(f"{root}/{subpath}")
                 #import torchaudio
                 #logger.info(f"torchaudio.info(file_path).sample_rate: {torchaudio.info(f'{root}/{subpath}').sample_rate}")
                 
                 #original line
-                #yield f"{root}/{subpath}", int(nsample)
-
-                # HACK there is no second col in tsv! nsample is used at MfccFeatureReader.get_feats() and seems useless
-                #nsample should be the len of the waveform
-                yield f"{root}/{subpath}", None
-
+                yield f"{root}/{subpath}", int(nsample)
+                # HACK line
+                # yield f"{root}/{subpath}", None
+                # there is no second col in tsv! nsample is used at MfccFeatureReader.get_feats() and seems useless
+                # nsample should be the len of the waveform (number of samples)
+                # seems that nsample is useless because in dump_feature(), in line 82: leng_f.write(f"{len(feat)}\n")
+                # so the len is computed no matter what nsample is
+                
     return iterate, len(lines)
 
 
@@ -75,6 +82,7 @@ def dump_feature(reader, generator, num, split, nshard, rank, feat_dir):
         for path, nsample in tqdm.tqdm(iterator, total=num):
             feat = reader.get_feats(path, nsample)
             feat_f.append(feat.cpu().numpy())
+            #logger.info(f"[DEBUG] feat.cpu().numpy().shape: {feat.cpu().numpy().shape}")
             leng_f.write(f"{len(feat)}\n")
     logger.info("finished successfully")
 

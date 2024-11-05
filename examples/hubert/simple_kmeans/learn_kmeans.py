@@ -125,6 +125,7 @@ def learn_kmeans(
 
     inertia = -km_model.score(feat) / len(feat)
     logger.info("total intertia: %.5f", inertia)
+    #logger.info(f"[DEBUG] sklearn intertia computation: {km_model.inertia_}")
     logger.info("finished successfully")
 
 

@@ -26,6 +26,7 @@ logger = logging.getLogger("dump_hubert_feature")
 
 
 class HubertFeatureReader(object):
+    
     def __init__(self, ckpt_path, layer, max_chunk=1600000):
         (
             model,
@@ -66,6 +67,10 @@ class HubertFeatureReader(object):
                     output_layer=self.layer,
                 )
                 feat.append(feat_chunk)
+        
+        #logger.info(f"[DEBUG] x.size(): {x.size()}")
+        #logger.info(f"[DEBUG] torch.cat(feat, 1).squeeze(0).size(): {torch.cat(feat, 1).squeeze(0).size()}")
+        
         return torch.cat(feat, 1).squeeze(0)
 
 

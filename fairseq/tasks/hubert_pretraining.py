@@ -36,6 +36,7 @@ class LabelEncoder(object):
 
 @dataclass
 class HubertPretrainingConfig(FairseqDataclass):
+    
     data: str = field(default=MISSING, metadata={"help": "path to data directory"})
     fine_tuning: bool = field(
         default=False, metadata={"help": "set to true if fine-tuning Hubert"}

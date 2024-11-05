@@ -27,6 +27,7 @@ def hydra_main(cfg: FairseqConfig) -> float:
     
     # HACK [DEBUG]
     # I want every run to create a new folder with outputs
+    # modified to make each run save its checkpoints in a different folder 
     if True:
         import time
         t = time.localtime()
@@ -41,15 +42,10 @@ def hydra_main(cfg: FairseqConfig) -> float:
 def _hydra_main(cfg: FairseqConfig, **kwargs) -> float:
 
     logger.info(f"[DEBUG] Entered _hydra_main()")
-    
-    #logger.info(f"[DEBUG] current directory is {os.getcwd()}")
 
     # TODO understand what is this doing (config defaults)
     # (This function adds default values that are stored in dataclasses that hydra doesn't know about)
     add_defaults(cfg)
-
-    #logger.info(f"[DEBUG] current directory is {os.getcwd()}")
-
     #logger.info(f"[DEBUG] cfg: {cfg}")
 
     # TODO understand what is this doing (logging)
@@ -66,8 +62,6 @@ def _hydra_main(cfg: FairseqConfig, **kwargs) -> float:
                 cfg.job_logging_cfg = OmegaConf.to_container(
                     HydraConfig.get().job_logging, resolve=True
                 )
-    
-    #logger.info(f"[DEBUG] current directory is {os.getcwd()}")
 
     # TODO understand what is this doing (?)
     with omegaconf_no_object_check():
@@ -75,8 +69,6 @@ def _hydra_main(cfg: FairseqConfig, **kwargs) -> float:
             OmegaConf.to_container(cfg, resolve=True, enum_to_str=True)
         )
     OmegaConf.set_struct(cfg, True)
-
-    #logger.info(f"[DEBUG] current directory is {os.getcwd()}")
 
     # TODO understand what is this doing (distributed?)
     try:
@@ -124,31 +116,20 @@ def cli_main():
 
     logger.info("[DEBUG] Entered cli_main()")
 
-    #logger.info(f"[DEBUG] 2 current directory is {os.getcwd()}")
-
     try:
         from hydra._internal.utils import get_args
-
         cfg_name = get_args().config_name or "config"
-        logger.debug(f"[DEBUG] cfg_name: {cfg_name}")
+        logger.info(f"[DEBUG] cfg_name: {cfg_name}")
     except:
         logger.warning("Failed to get config name from hydra args")
         cfg_name = "config"
 
-    #logger.info(f"[DEBUG] 3 current directory is {os.getcwd()}")
-
     # TODO understand what is this doing
     hydra_init(cfg_name)
-
-    #logger.info(f"[DEBUG] 4 current directory is {os.getcwd()}")
-
     hydra_main()
-
-    #logger.info(f"[DEBUG] 5 current directory is {os.getcwd()}")
 
     logger.info("[DEBUG] Exited cli_main()")
 
 
 if __name__ == "__main__":
-    #logger.info(f"[DEBUG] 1 current directory is {os.getcwd()}")
     cli_main()

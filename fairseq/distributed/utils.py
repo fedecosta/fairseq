@@ -94,19 +94,30 @@ def _infer_torch_distributed_launch_init(cfg: DistributedTrainingConfig):
 
 
 def _infer_slurm_init(cfg: DistributedTrainingConfig, num_pipelines_per_node):
+    
     node_list = os.environ.get("SLURM_STEP_NODELIST")
     if node_list is None:
         node_list = os.environ.get("SLURM_JOB_NODELIST")
+    #logger.info(f"[DEBUG] node_list: {node_list}")
+
     if node_list is not None:
+        
         try:
+            
             hostnames = subprocess.check_output(
                 ["scontrol", "show", "hostnames", node_list]
             )
+
             cfg.distributed_init_method = "tcp://{host}:{port}".format(
                 host=hostnames.split()[0].decode("utf-8"),
                 port=cfg.distributed_port,
             )
+            #logger.info(f"[DEBUG] cfg.distributed_init_method: {cfg.distributed_init_method}")
+
             nnodes = int(os.environ.get("SLURM_NNODES"))
+            #logger.info(f"[DEBUG] nnodes: {nnodes}")
+            #logger.info(f"[DEBUG] ntasks: {int(os.environ.get('SLURM_NTASKS'))}")
+
             ntasks_per_node = os.environ.get("SLURM_NTASKS_PER_NODE")
             if ntasks_per_node is not None:
                 ntasks_per_node = int(ntasks_per_node)
@@ -115,12 +126,17 @@ def _infer_slurm_init(cfg: DistributedTrainingConfig, num_pipelines_per_node):
                 nnodes = int(os.environ.get("SLURM_NNODES"))
                 assert ntasks % nnodes == 0
                 ntasks_per_node = int(ntasks / nnodes)
+            #logger.info(f"[DEBUG] ntasks_per_node: {ntasks_per_node}")
+
+            #logger.info(f"[DEBUG] cfg.pipeline_model_parallel: {cfg.pipeline_model_parallel}")
             if ntasks_per_node == 1:
+                #logger.info(f"[DEBUG] Entered if ntasks_per_node == 1")
                 gpus_per_node = torch.cuda.device_count()
                 node_id = int(os.environ.get("SLURM_NODEID"))
                 cfg.distributed_rank = node_id * gpus_per_node
                 cfg.distributed_world_size = nnodes * gpus_per_node
             elif cfg.pipeline_model_parallel:
+                #logger.info(f"[DEBUG] Entered elif cfg.pipeline_model_parallel:")
                 assert ntasks_per_node == num_pipelines_per_node, (
                     "SLURM --ntasks-per-node must match number of pipelines per "
                     "node (={})".format(num_pipelines_per_node)
@@ -139,14 +155,26 @@ def _infer_slurm_init(cfg: DistributedTrainingConfig, num_pipelines_per_node):
                 # number of pipelines across all nodes.
                 cfg.distributed_world_size = nnodes * num_pipelines_per_node
             else:
+                #logger.info(f"[DEBUG] Entered else")
+                
+                logger.info(f"[DEBUG] ntasks_per_node: {ntasks_per_node}")
+                logger.info(f"[DEBUG] cfg.distributed_world_size: {cfg.distributed_world_size}")
+                logger.info(f"[DEBUG] nnodes: {nnodes}")
+                
                 assert (
                     ntasks_per_node == cfg.distributed_world_size // nnodes
                 ), f"{ntasks_per_node}, {cfg.distributed_world_size}, {nnodes}"
+                
                 cfg.distributed_no_spawn = True
                 cfg.distributed_rank = int(os.environ.get("SLURM_PROCID"))
                 cfg.device_id = int(os.environ.get("SLURM_LOCALID"))
+                #logger.info(f"[DEBUG] cfg.distributed_rank: {cfg.distributed_rank}")
+                #logger.info(f"[DEBUG] cfg.device_id: {cfg.device_id}")
+
             logger.info(f"Rank {cfg.distributed_rank}, device_id: {cfg.device_id}")
             return True
+        
+        
         except subprocess.CalledProcessError as e:  # scontrol failed
             raise e
         except FileNotFoundError:  # Slurm is not installed

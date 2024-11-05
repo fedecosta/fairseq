@@ -678,5 +678,4 @@ def cli_main(
 
 
 if __name__ == "__main__":
-    #logger.info(f"[DEBUG] Entered if __name__ == __main__")
     cli_main()
