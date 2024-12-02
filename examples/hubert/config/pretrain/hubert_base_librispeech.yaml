@@ -3,8 +3,8 @@
 common:
   fp16: true
   log_format: json
-  log_file: '/gpfs/projects/bsc88/speech/research/outputs/logs/hubert/fairseq_train_log.txt' # added by me
-  log_interval: 100 # modified by me, original 200
+  #log_file: '/gpfs/projects/bsc88/speech/research/outputs/logs/hubert/fairseq_train_log.txt' # added by me
+  log_interval: 200 # modified by me, original 200
   seed: 1337
   tensorboard_logdir: tblog
   #model_parallel_size: 8 # total number of GPUs to parallelize model over
@@ -12,7 +12,7 @@ common:
 
 checkpoint:
   save_interval: 1 # added by me, save a checkpoint every N epochs
-  #save_interval_updates: 25000 # save a checkpoint (and validate) every N updates
+  #save_interval_updates: 100 #25000 # save a checkpoint (and validate) every N updates
   keep_interval_updates: 1 # keep the last N checkpoints saved with --save-interval-updates
   no_epoch_checkpoints: true # only store last and best checkpoints
   save_dir: 'checkpoints' # added by me
@@ -24,7 +24,7 @@ checkpoint:
 distributed_training:
   ddp_backend: no_c10d
   distributed_backend: 'nccl'
-  distributed_world_size: 4 # total number of GPUs across all nodes (default: all visible GPUs)
+  distributed_world_size: 16 # total number of GPUs across all nodes (default: all visible GPUs)
   #distributed_num_procs: 1 # total number of processes to fork (default: all visible GPUs) 
   distributed_port: 29671
   #nprocs_per_node: 4 # number of GPUs in each node. An allreduce operation across GPUs in a node is very fast. Hence, we do allreduce across GPUs in a node, and gossip across different nodes
@@ -45,7 +45,7 @@ task:
 
 dataset:
   num_workers: 6 # how many subprocesses to use for data loading
-  max_tokens: 1400000 # maximum number of tokens in a batch
+  max_tokens: 1400000 # 1400000 maximum number of tokens in a batch
   skip_invalid_size_inputs_valid_test: true
   validate_interval: 1 # validate every N epochs
   #validate_interval_updates: 10000 # validate every N updates
@@ -60,7 +60,7 @@ optimization:
   max_update: 400000
   lr: [0.0005]
   clip_norm: 10.0
-  max_epoch: 1 # if 0, no epoch limit 
+  max_epoch: 324 # if 0, no epoch limit 
 
 optimizer:
   _name: adam
@@ -70,7 +70,7 @@ optimizer:
 
 lr_scheduler:
   _name: polynomial_decay
-  warmup_updates: 32000
+  warmup_updates: 80000 #32000
 
 model:
   _name: hubert

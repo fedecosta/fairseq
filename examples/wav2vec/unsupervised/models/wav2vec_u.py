@@ -234,7 +234,9 @@ class Discriminator(nn.Module):
             if cfg.discriminator_spectral_norm:
                 conv = nn.utils.spectral_norm(conv)
             elif cfg.discriminator_weight_norm:
-                conv = nn.utils.weight_norm(conv)
+                # HACK [DEBUG] 
+                # original line: conv = nn.utils.weight_norm(conv)
+                conv = nn.utils.parametrizations.weight_norm(conv)
             return conv
 
         inner_net = [

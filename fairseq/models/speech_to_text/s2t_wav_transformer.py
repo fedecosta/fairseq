@@ -199,7 +199,9 @@ class SpeechWavTransformerEncoder(FairseqEncoder):
         nn.init.normal_(self.embed_positions.weight, mean=0, std=std)
         nn.init.constant_(self.embed_positions.bias, 0)
 
-        self.embed_positions = nn.utils.weight_norm(
+        # HACK [DEBUG] 
+        # original line:self.embed_positions = nn.utils.weight_norm(self.embed_positions, name="weight", dim=2)
+        self.embed_positions = nn.utils.parametrizations.weight_norm(
             self.embed_positions, name="weight", dim=2
         )
         self.embed_positions = nn.Sequential(

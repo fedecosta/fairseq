@@ -598,8 +598,9 @@ class OptimizationConfig(FairseqDataclass):
             "help": "force stop training after specified cumulative time (if >0)"
         },
     )
+    # HACK [DEBUG]
     clip_norm: float = field(
-        default=0.0, metadata={"help": "clip threshold of gradients"}
+        default=10.0, metadata={"help": "clip threshold of gradients"}
     )
     sentence_avg: bool = field(
         default=False,

@@ -882,7 +882,10 @@ def LinearizedConv1d(in_channels, out_channels, kernel_size, dropout=0, **kwargs
     std = math.sqrt((4 * (1.0 - dropout)) / (m.kernel_size[0] * in_channels))
     nn.init.normal_(m.weight, mean=0, std=std)
     nn.init.constant_(m.bias, 0)
-    return nn.utils.weight_norm(m, dim=2)
+    # HACK [DEBUG]
+    # original line: return nn.utils.weight_norm(m, dim=2)
+    return nn.utils.parametrizations.weight_norm(m, dim=2)
+    
 
 
 def LayerNorm(embedding_dim):

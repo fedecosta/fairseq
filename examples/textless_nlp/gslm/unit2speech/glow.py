@@ -120,7 +120,9 @@ class WN(torch.nn.Module):
         self.res_skip_layers = torch.nn.ModuleList()
 
         start = torch.nn.Conv1d(n_in_channels, n_channels, 1)
-        start = torch.nn.utils.weight_norm(start, name='weight')
+        # HACK [DEBUG] 
+        # original line: start = torch.nn.utils.weight_norm(start, name='weight')
+        start = torch.nn.utils.parametrizations.weight_norm(start, name='weight')
         self.start = start
 
         # Initializing last layer to 0 makes the affine coupling layers
@@ -131,14 +133,18 @@ class WN(torch.nn.Module):
         self.end = end
 
         cond_layer = torch.nn.Conv1d(n_mel_channels, 2*n_channels*n_layers, 1)
-        self.cond_layer = torch.nn.utils.weight_norm(cond_layer, name='weight')
+        # HACK [DEBUG] 
+        # original line: self.cond_layer = torch.nn.utils.weight_norm(cond_layer, name='weight')
+        self.cond_layer = torch.nn.utils.parametrizations.weight_norm(cond_layer, name='weight')
 
         for i in range(n_layers):
             dilation = 2 ** i
             padding = int((kernel_size*dilation - dilation)/2)
             in_layer = torch.nn.Conv1d(n_channels, 2*n_channels, kernel_size,
                                        dilation=dilation, padding=padding)
-            in_layer = torch.nn.utils.weight_norm(in_layer, name='weight')
+            # HACK [DEBUG] 
+            # original line: in_layer = torch.nn.utils.weight_norm(in_layer, name='weight')
+            in_layer = torch.nn.utils.parametrizations.weight_norm(in_layer, name='weight')
             self.in_layers.append(in_layer)
 
 
@@ -148,7 +154,9 @@ class WN(torch.nn.Module):
             else:
                 res_skip_channels = n_channels
             res_skip_layer = torch.nn.Conv1d(n_channels, res_skip_channels, 1)
-            res_skip_layer = torch.nn.utils.weight_norm(res_skip_layer, name='weight')
+            # HACK [DEBUG] 
+            # original line: res_skip_layer = torch.nn.utils.weight_norm(res_skip_layer, name='weight')
+            res_skip_layer = nn.utils.parametrizations.weight_norm(res_skip_layer, name='weight')
             self.res_skip_layers.append(res_skip_layer)
 
     def forward(self, forward_input):

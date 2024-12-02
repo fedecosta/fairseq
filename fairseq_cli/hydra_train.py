@@ -32,6 +32,7 @@ def hydra_main(cfg: FairseqConfig) -> float:
         import time
         t = time.localtime()
         new_output_path = os.path.join(os.getcwd(), "pre_train_outputs", time.strftime("%Y_%m_%d_%H_%M_%S", t))
+        #new_output_path = os.path.join(os.getcwd(), "pre_train_outputs", "2024_11_02")
         logger.info(f"[DEBUG] new_output_path: {new_output_path}")
         os.makedirs(new_output_path, exist_ok=True)
         os.chdir(new_output_path)

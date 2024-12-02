@@ -106,7 +106,11 @@ class W2lConvGluEncoder(FairseqEncoder):
         for out_channels, kernel_size, padding, dropout in conv_enc_config:
             layer = nn.Conv1d(cur_channels, out_channels, kernel_size, padding=padding)
             layer.weight.data.mul_(math.sqrt(3))  # match wav2letter init
-            self.conv_layers.append(nn.utils.weight_norm(layer))
+            
+            # HACK [DEBUG]
+            # original line: self.conv_layers.append(nn.utils.weight_norm(layer))
+            self.conv_layers.append(nn.utils.parametrizations.weight_norm(layer))
+
             self.dropouts.append(
                 FairseqDropout(dropout, module_name=self.__class__.__name__)
             )
@@ -117,7 +121,10 @@ class W2lConvGluEncoder(FairseqEncoder):
         for out_channels in [2 * cur_channels, vocab_size]:
             layer = nn.Linear(cur_channels, out_channels)
             layer.weight.data.mul_(math.sqrt(3))
-            self.linear_layers.append(nn.utils.weight_norm(layer))
+            
+            # HACK [DEBUG]
+            # original line: self.linear_layers.append(nn.utils.weight_norm(layer))
+            self.linear_layers.append(nn.utils.parametrizations.weight_norm(layer))
             cur_channels = out_channels // 2
 
     def forward(self, src_tokens, src_lengths, **kwargs):

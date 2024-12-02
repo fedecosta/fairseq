@@ -111,6 +111,19 @@ def main(cfg: FairseqConfig) -> None:
             model = fsdp_wrap(task.build_model(cfg.model))
     else:
         model = task.build_model(cfg.model)
+
+    # HACK [DEBUG] print model weights info
+    if False:
+        total_params = len(list(model.named_parameters()))
+        for index, (name, parameter) in enumerate(model.named_parameters()):
+            
+            if True or index >= total_params - 4:
+                min_value = min(parameter.flatten())
+                max_value = max(parameter.flatten())
+                if min_value == max_value:
+                    logger.info(f"[DEBUG] (train build model) param number {index} - min: {min_value:.5f} \t - max: {max_value:.5f} \t - min==max=TRUE \t - size: {parameter.size()} \t \t - name: {name}")
+                else:
+                    logger.info(f"[DEBUG] (train build model) param number {index} - min: {min_value:.5f} \t - max: {max_value:.5f} \t - min==max=false \t - size: {parameter.size()} \t \t - name: {name}")
     
     criterion = task.build_criterion(cfg.criterion)
     
@@ -234,7 +247,7 @@ def main(cfg: FairseqConfig) -> None:
 
         # train for one epoch
         valid_losses, should_stop = train(cfg, trainer, task, epoch_itr)
-        logger.info(f"[DEBUG ]valid_losses: {valid_losses}")
+        logger.info(f"[DEBUG] valid_losses: {valid_losses}")
         if should_stop:
             break
 
@@ -260,6 +273,16 @@ def main(cfg: FairseqConfig) -> None:
         )
         PathManager.async_close()
         logger.info("ioPath PathManager finished waiting.")
+    
+    # HACK [DEBUG] print model weights info
+    if True:
+        logger.info("-"*50)
+        for index, (name, parameter) in reversed(list(enumerate(model.named_parameters()))):
+            min_value = min(parameter.flatten())
+            max_value = max(parameter.flatten())
+            logger.info(f"[DEBUG] (trainer train step end) param number {index} - min: {min_value:.5f} \t - max: {max_value:.5f} \t - min==max={min_value == max_value} \t - size: {parameter.size()} \t \t - name: {name}")      
+            if min_value == max_value: break
+        logger.info("-"*50)
     
     logger.info(f"[DEBUG] Exited main()")
 

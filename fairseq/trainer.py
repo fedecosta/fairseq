@@ -143,7 +143,12 @@ class Trainer(object):
 
         # TODO(myleott): support tpu
         if self.cuda and self.data_parallel_world_size > 1:
+            # HACK [DEBUG] 
+            # original line: 
             self._grad_norm_buf = torch.cuda.DoubleTensor(self.data_parallel_world_size)
+            #logger.info(f"[DEBUG] 1 self._grad_norm_buf: {self._grad_norm_buf}")
+            #self._grad_norm_buf = torch.tensor(data=self.data_parallel_world_size, dtype=torch.double, device='cuda')
+            #logger.info(f"[DEBUG] 2 self._grad_norm_buf: {self._grad_norm_buf}")
         else:
             self._grad_norm_buf = None
 
@@ -452,6 +457,21 @@ class Trainer(object):
             # call state_dict on all ranks in case it needs internal communication
             state_dict = utils.move_to_cpu(self.state_dict())
             state_dict["extra_state"].update(extra_state)
+            
+            # HACK DEBUG save only the model weights
+            #logger.info(f"[DEBUG] state_dict: {state_dict.keys()}")
+            #logger.info(f"[DEBUG] state_dict: {state_dict['model']}")
+            #import torch
+            #torch.save(state_dict["model"], "/gpfs/projects/bsc88/speech/research/outputs/checkpoints/hubert/model.pt")
+            # some name parameters from Fairseq are different from HuggingFace model, so we need to change them to load the model properly in HF
+            state_dict_to_save = change_state_dict_keys(state_dict["model"])
+            #logger.info(f"[DEBUG] state_dict_to_save: {state_dict_to_save}")
+            checkpoint_utils.torch_persistent_save(
+                state_dict_to_save,
+                filename.replace(".pt", "") + "_weights.pt",
+                async_write=self.cfg.checkpoint.write_checkpoints_asynchronously,
+            )
+            logger.info(f"Finished saving checkpoint to {os.path.abspath(filename.replace('.pt', '') + '_weights.pt')}")
 
             checkpoint_utils.torch_persistent_save(
                 state_dict,
@@ -783,6 +803,17 @@ class Trainer(object):
 
             xm.rendezvous("begin_epoch")  # wait for all workers
             xm.mark_step()
+        
+        # HACK [DEBUG] print model weights info
+        if False:
+            logger.info("-"*50)
+            #total_params = len(list(self.model.named_parameters()))
+            for index, (name, parameter) in reversed(list(enumerate(self.model.named_parameters()))):
+                min_value = min(parameter.flatten())
+                max_value = max(parameter.flatten())
+                logger.info(f"[DEBUG] (trainer train step end) param number {index} - min: {min_value:.5f} \t - max: {max_value:.5f} \t - min==max={min_value == max_value} \t - size: {parameter.size()} \t \t - name: {name}")      
+                if min_value == max_value: break
+            logger.info("-"*50)
 
     def begin_valid_epoch(self, epoch):
         """Called at the beginning of each validation epoch."""
@@ -790,12 +821,26 @@ class Trainer(object):
         # task specific setup per validation epoch
         self.task.begin_valid_epoch(epoch, self.get_model())
 
+        # HACK [DEBUG] print model weights info
+        if False:
+            logger.info(f"[DEBUG] Computing model weights info...")
+            total_params = len(list(self.model.named_parameters()))
+            logger.info(f"[DEBUG] total_params: {total_params}")
+            for index, (name, parameter) in enumerate(self.model.named_parameters()):
+                logger.info(f"[DEBUG] Analyzing param {index} of {total_params}...")
+                min_value = min(parameter.flatten())
+                max_value = max(parameter.flatten())
+                if min_value == max_value:
+                    logger.info(f"[DEBUG] (valid) param name: {name}, min==max={min_value}")
+                    break
+
     def reset_dummy_batch(self, batch):
         self._dummy_batch = batch
 
     @metrics.aggregate("train")
     def train_step(self, samples, raise_oom=False):
         """Do forward, backward and parameter update."""
+
         self._set_seed()
         self.model.train()
         self.criterion.train()
@@ -1125,6 +1170,19 @@ class Trainer(object):
             )
 
         metrics.log_stop_time("train_wall")
+
+        # HACK [DEBUG] print model weights info
+        if False:
+            logger.info("-"*50)
+            #total_params = len(list(self.model.named_parameters()))
+            for index, (name, parameter) in reversed(list(enumerate(self.model.named_parameters()))):
+                
+                min_value = min(parameter.flatten())
+                max_value = max(parameter.flatten())
+                logger.info(f"[DEBUG] (trainer train step end) param number {index} - min: {min_value:.5f} \t - max: {max_value:.5f} \t - min==max={min_value == max_value} \t - size: {parameter.size()} \t \t - name: {name}")      
+                if min_value == max_value: break
+            logger.info("-"*50)
+
         return logging_output
 
     @metrics.aggregate("valid")
@@ -1620,3 +1678,61 @@ def _set_module_by_path(module, path, value):
     for name in path[:-1]:
         module = getattr(module, name)
     setattr(module, path[-1], value)
+
+
+# -------------------------------------------------------------------------------------------------------
+# HACK [DEBUG] custom added function
+def change_state_dict_keys(fairseq_state_dict):
+    
+    """
+    Change Fairseq param names to HuggingFace param names
+    """
+
+    hugging_face_state_dict = fairseq_state_dict.copy()
+
+    hugging_face_state_dict["masked_spec_embed"] = hugging_face_state_dict.pop("mask_emb")
+
+    hugging_face_state_dict.pop("label_embs_concat")
+
+    hugging_face_state_dict["feature_extractor.conv_layers.0.conv.weight"] = hugging_face_state_dict.pop("feature_extractor.conv_layers.0.0.weight")
+    hugging_face_state_dict["feature_extractor.conv_layers.0.layer_norm.weight"] = hugging_face_state_dict.pop("feature_extractor.conv_layers.0.2.weight")
+    hugging_face_state_dict["feature_extractor.conv_layers.0.layer_norm.bias"] = hugging_face_state_dict.pop("feature_extractor.conv_layers.0.2.bias")
+    for i in range(1, 7):
+        hugging_face_state_dict[f"feature_extractor.conv_layers.{i}.conv.weight"] = hugging_face_state_dict.pop(f"feature_extractor.conv_layers.{i}.0.weight")
+    
+    hugging_face_state_dict["feature_projection.projection.weight"] = hugging_face_state_dict.pop("post_extract_proj.weight")
+    hugging_face_state_dict["feature_projection.projection.bias"] = hugging_face_state_dict.pop("post_extract_proj.bias")
+
+    hugging_face_state_dict["encoder.pos_conv_embed.conv.bias"] = hugging_face_state_dict.pop("encoder.pos_conv.0.bias")
+    hugging_face_state_dict["encoder.pos_conv_embed.conv.parametrizations.weight.original0"] = hugging_face_state_dict.pop("encoder.pos_conv.0.parametrizations.weight.original0")
+    hugging_face_state_dict["encoder.pos_conv_embed.conv.parametrizations.weight.original1"] = hugging_face_state_dict.pop("encoder.pos_conv.0.parametrizations.weight.original1")
+    
+    for i in range(0, 12):
+        hugging_face_state_dict[f"encoder.layers.{i}.attention.k_proj.weight"] = hugging_face_state_dict.pop(f"encoder.layers.{i}.self_attn.k_proj.weight")
+        hugging_face_state_dict[f"encoder.layers.{i}.attention.k_proj.bias"] = hugging_face_state_dict.pop(f"encoder.layers.{i}.self_attn.k_proj.bias")
+        hugging_face_state_dict[f"encoder.layers.{i}.attention.v_proj.weight"] = hugging_face_state_dict.pop(f"encoder.layers.{i}.self_attn.v_proj.weight")
+        hugging_face_state_dict[f"encoder.layers.{i}.attention.v_proj.bias"] = hugging_face_state_dict.pop(f"encoder.layers.{i}.self_attn.v_proj.bias")
+        hugging_face_state_dict[f"encoder.layers.{i}.attention.q_proj.weight"] = hugging_face_state_dict.pop(f"encoder.layers.{i}.self_attn.q_proj.weight")
+        hugging_face_state_dict[f"encoder.layers.{i}.attention.q_proj.bias"] = hugging_face_state_dict.pop(f"encoder.layers.{i}.self_attn.q_proj.bias")
+        hugging_face_state_dict[f"encoder.layers.{i}.attention.out_proj.weight"] = hugging_face_state_dict.pop(f"encoder.layers.{i}.self_attn.out_proj.weight")
+        hugging_face_state_dict[f"encoder.layers.{i}.attention.out_proj.bias"] = hugging_face_state_dict.pop(f"encoder.layers.{i}.self_attn.out_proj.bias")
+        hugging_face_state_dict[f"encoder.layers.{i}.layer_norm.weight"] = hugging_face_state_dict.pop(f"encoder.layers.{i}.self_attn_layer_norm.weight")
+        hugging_face_state_dict[f"encoder.layers.{i}.layer_norm.bias"] = hugging_face_state_dict.pop(f"encoder.layers.{i}.self_attn_layer_norm.bias")
+        hugging_face_state_dict[f"encoder.layers.{i}.feed_forward.intermediate_dense.weight"] = hugging_face_state_dict.pop(f"encoder.layers.{i}.fc1.weight")
+        hugging_face_state_dict[f"encoder.layers.{i}.feed_forward.intermediate_dense.bias"] = hugging_face_state_dict.pop(f"encoder.layers.{i}.fc1.bias")
+        hugging_face_state_dict[f"encoder.layers.{i}.feed_forward.output_dense.weight"] = hugging_face_state_dict.pop(f"encoder.layers.{i}.fc2.weight")
+        hugging_face_state_dict[f"encoder.layers.{i}.feed_forward.output_dense.bias"] = hugging_face_state_dict.pop(f"encoder.layers.{i}.fc2.bias")
+        hugging_face_state_dict[f"encoder.layers.{i}.final_layer_norm.weight"] = hugging_face_state_dict.pop(f"encoder.layers.{i}.final_layer_norm.weight")
+        hugging_face_state_dict[f"encoder.layers.{i}.final_layer_norm.bias"] = hugging_face_state_dict.pop(f"encoder.layers.{i}.final_layer_norm.bias")
+
+
+    hugging_face_state_dict[f"encoder.layer_norm.weight"] = hugging_face_state_dict.pop(f"encoder.layer_norm.weight")
+    hugging_face_state_dict[f"encoder.layer_norm.bias"] = hugging_face_state_dict.pop(f"encoder.layer_norm.bias")
+
+    hugging_face_state_dict[f"feature_projection.layer_norm.weight"] = hugging_face_state_dict.pop(f"layer_norm.weight")
+    hugging_face_state_dict[f"feature_projection.layer_norm.bias"] = hugging_face_state_dict.pop(f"layer_norm.bias")
+    
+    hugging_face_state_dict.pop(f"final_proj.weight")
+    hugging_face_state_dict.pop(f"final_proj.bias")
+
+    return hugging_face_state_dict

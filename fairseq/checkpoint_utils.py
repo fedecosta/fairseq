@@ -202,6 +202,11 @@ def save_checkpoint(cfg: CheckpointConfig, trainer, epoch_itr, val_loss):
             elif PathManager.exists(old_chk):
                 PathManager.rm(old_chk)
 
+    logger.info(f"extra_state.keys(): {extra_state.keys()}")
+    logger.info(f"extra_state['train_iterator']: {extra_state['train_iterator']}")
+    logger.info(f"type(saved_cp): {type(saved_cp)}")
+    logger.info(f"saved_cp: {saved_cp}")
+    
     return saved_cp
 
 

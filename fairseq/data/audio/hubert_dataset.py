@@ -145,7 +145,7 @@ class HubertDataset(FairseqDataset):
         single_target: bool = False,
     ):
         
-        logger.info("[DEBUG] Entered HubertDataset")
+        logger.info("[DEBUG] Entered HubertDataset init")
         
         self.audio_root, self.audio_names, inds, tot, self.sizes = load_audio(
             manifest_path, max_keep_sample_size, min_keep_sample_size
@@ -188,7 +188,7 @@ class HubertDataset(FairseqDataset):
             f"normalize={normalize}, max_sample_size={self.max_sample_size}"
         )
 
-        logger.info("[DEBUG] EXited HubertDataset")
+        logger.info("[DEBUG] EXited HubertDataset init")
 
     def get_audio(self, index):
         import soundfile as sf

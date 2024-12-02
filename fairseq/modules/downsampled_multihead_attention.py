@@ -303,7 +303,9 @@ def Linear(in_features, out_features, dropout=0.0, bias=True):
     m = nn.Linear(in_features, out_features, bias=bias)
     m.weight.data.normal_(mean=0, std=math.sqrt((1 - dropout) / in_features))
     m.bias.data.zero_()
-    return nn.utils.weight_norm(m)
+    # HACK [DEBUG] 
+    # original line: return nn.utils.weight_norm(m)
+    return nn.utils.parametrizations.weight_norm(m)
 
 
 def GatedLinear(in_features, out_features, dropout=0.0, bias=True):

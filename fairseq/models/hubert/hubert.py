@@ -242,7 +242,8 @@ class HubertConfig(FairseqDataclass):
         default="abs",
         metadata={"help": "Positional encoding type to use in conformer"},
     )
-    fp16: bool = field(default=False, metadata={"help": "If fp16 is being used"})
+    # HACK [DEBUG] original False
+    fp16: bool = field(default=True, metadata={"help": "If fp16 is being used"})
 
 
 @register_model("hubert", dataclass=HubertConfig)

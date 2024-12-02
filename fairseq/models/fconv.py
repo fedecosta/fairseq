@@ -594,7 +594,9 @@ class FConvDecoder(FairseqIncrementalDecoder):
             for i, conv in enumerate(self.convolutions):
                 # reconfigure weight norm
                 nn.utils.remove_weight_norm(conv)
-                self.convolutions[i] = nn.utils.weight_norm(conv, dim=0)
+                # HACK [DEBUG] 
+                # original line: self.convolutions[i] = nn.utils.weight_norm(conv, dim=0)
+                self.convolutions[i] = nn.utils.parametrizations.weight_norm(conv, dim=0)
             state_dict["decoder.version"] = torch.Tensor([1])
         return state_dict
 
@@ -673,7 +675,9 @@ def Linear(in_features, out_features, dropout=0.0):
     m = nn.Linear(in_features, out_features)
     nn.init.normal_(m.weight, mean=0, std=math.sqrt((1 - dropout) / in_features))
     nn.init.constant_(m.bias, 0)
-    return nn.utils.weight_norm(m)
+    # HACK [DEBUG] 
+    # original line: return nn.utils.weight_norm(m)
+    return nn.utils.parametrizations.weight_norm(m)
 
 
 def LinearizedConv1d(in_channels, out_channels, kernel_size, dropout=0.0, **kwargs):
@@ -682,7 +686,9 @@ def LinearizedConv1d(in_channels, out_channels, kernel_size, dropout=0.0, **kwar
     std = math.sqrt((4 * (1.0 - dropout)) / (m.kernel_size[0] * in_channels))
     nn.init.normal_(m.weight, mean=0, std=std)
     nn.init.constant_(m.bias, 0)
-    return nn.utils.weight_norm(m, dim=2)
+    # HACK [DEBUG] 
+    # original line: return nn.utils.weight_norm(m, dim=2)
+    return nn.utils.parametrizations.weight_norm(m, dim=2)
 
 
 def ConvTBC(in_channels, out_channels, kernel_size, dropout=0.0, **kwargs):
@@ -693,7 +699,9 @@ def ConvTBC(in_channels, out_channels, kernel_size, dropout=0.0, **kwargs):
     std = math.sqrt((4 * (1.0 - dropout)) / (m.kernel_size[0] * in_channels))
     nn.init.normal_(m.weight, mean=0, std=std)
     nn.init.constant_(m.bias, 0)
-    return nn.utils.weight_norm(m, dim=2)
+    # HACK [DEBUG] 
+    # original line: return nn.utils.weight_norm(m, dim=2)
+    return nn.utils.parametrizations.weight_norm(m, dim=2)
 
 
 @register_model_architecture("fconv", "fconv")
